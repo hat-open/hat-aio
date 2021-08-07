@@ -2,7 +2,7 @@ from pathlib import Path
 import subprocess
 import sys
 
-from . import common
+from hat.doit import common
 
 
 __all__ = ['task_clean_all',
