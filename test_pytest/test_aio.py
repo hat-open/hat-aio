@@ -339,7 +339,7 @@ def test_run_asyncio_with_multiple_signals():
     t.join()
 
 
-# TODO: test run_asyncio with `handle_signals` and `create_loop`
+# TODO: test run_asyncio with `handle_signals` and `loop`
 
 
 def test_run_async_example():
@@ -366,14 +366,14 @@ async def test_queue():
         await queue.get()
 
 
-def test_queue_str():
+async def test_queue_str():
     queue = aio.Queue()
     result = str(queue)
     assert isinstance(result, str)
     assert result
 
 
-def test_queue_len():
+async def test_queue_len():
     count = 10
     queue = aio.Queue()
     assert len(queue) == 0
@@ -390,7 +390,7 @@ def test_queue_len():
     assert len(queue) == 0
 
 
-def test_queue_get_nowait():
+async def test_queue_get_nowait():
     queue = aio.Queue()
     with pytest.raises(aio.QueueEmptyError):
         queue.get_nowait()
@@ -405,7 +405,7 @@ async def test_queue_get_until_empty():
     assert result == 3
 
 
-def test_queue_get_nowait_until_empty():
+async def test_queue_get_nowait_until_empty():
     queue = aio.Queue()
     queue.put_nowait(1)
     queue.put_nowait(2)
@@ -586,7 +586,7 @@ async def test_group_spawn_when_not_open():
         g.wrap(asyncio.Future())
 
 
-def test_group_close_empty_group():
+async def test_group_close_empty_group():
     g = aio.Group()
     assert not g.is_closing
     assert not g.is_closed

@@ -325,14 +325,15 @@ def create_executor(*args: typing.Any,
     executor = executor_cls(*args)
 
     async def executor_wrapper(func, /, *args, **kwargs):
-        _loop = loop or asyncio.get_event_loop()
+        _loop = loop or asyncio.get_running_loop()
         fn = functools.partial(func, *args, **kwargs)
         return await _loop.run_in_executor(executor, fn)
 
     return executor_wrapper
 
 
-def init_asyncio(policy: typing.Optional[asyncio.AbstractEventLoopPolicy] = None):  # NOQA
+def init_asyncio(policy: typing.Optional[asyncio.AbstractEventLoopPolicy] = None  # NOQA
+                 ) -> asyncio.AbstractEventLoop:
     """Initialize asyncio.
 
     Sets event loop policy (if ``None``, instance of
@@ -360,11 +361,12 @@ def init_asyncio(policy: typing.Optional[asyncio.AbstractEventLoopPolicy] = None
     asyncio.set_event_loop_policy(policy or get_default_policy())
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
+    return loop
 
 
 def run_asyncio(future: typing.Awaitable, *,
-                handle_signals=True,
-                create_loop=False
+                handle_signals: bool = True,
+                loop: typing.Optional[asyncio.AbstractEventLoop] = None
                 ) -> typing.Any:
     """Run asyncio loop until the `future` is completed and return the result.
 
@@ -374,7 +376,7 @@ def run_asyncio(future: typing.Awaitable, *,
     ignored. On Windows, SIGBREAK (CTRL_BREAK_EVENT) handler is also
     overridden.
 
-    If `create_loop` is set to ``True``, new event loop is created and set
+    If `loop` is set to ``None``, new event loop is created and set
     as thread's default event loop.
 
     On Windows, asyncio loop gets periodically woken up (every 0.5 seconds).
@@ -382,7 +384,7 @@ def run_asyncio(future: typing.Awaitable, *,
     Args:
         future: future or coroutine
         handle_signals: handle signals flag
-        create_loop: create new event loop
+        loop: event loop
 
     Returns:
         future's result
@@ -397,11 +399,9 @@ def run_asyncio(future: typing.Awaitable, *,
         assert result == 123
 
     """
-    if create_loop:
+    if not loop:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-    else:
-        loop = asyncio.get_event_loop()
 
     task = asyncio.ensure_future(future, loop=loop)
 
@@ -488,12 +488,15 @@ class Queue:
 
     """
 
-    def __init__(self, maxsize: int = 0):
+    def __init__(self,
+                 maxsize: int = 0, *,
+                 loop: typing.Optional[asyncio.AbstractEventLoop] = None):
         self._maxsize = maxsize
+        self._loop = loop
         self._queue = collections.deque()
         self._getters = collections.deque()
         self._putters = collections.deque()
-        self._closed = asyncio.Future()
+        self._closed = asyncio.Future(loop=loop)
 
     def __aiter__(self):
         return self
@@ -692,9 +695,9 @@ class Group:
                  *,
                  loop: typing.Optional[asyncio.AbstractEventLoop] = None):
         self._exception_cb = exception_cb
-        self._loop = loop or asyncio.get_event_loop()
-        self._closing = asyncio.Future()
-        self._closed = asyncio.Future()
+        self._loop = loop or asyncio.get_running_loop()
+        self._closing = asyncio.Future(loop=loop)
+        self._closed = asyncio.Future(loop=loop)
         self._canceled = False
         self._tasks = set()
         self._parent = None
