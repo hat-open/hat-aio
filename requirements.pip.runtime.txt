@@ -1,1 +1,1 @@
-hat-util >= 0.5.4
+hat-util ~= 0.5.5
