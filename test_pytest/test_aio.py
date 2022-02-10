@@ -12,9 +12,6 @@ import pytest
 from hat import aio
 
 
-pytestmark = pytest.mark.asyncio
-
-
 async def test_first():
     queue = aio.Queue()
     queue.put_nowait(1)
