@@ -294,7 +294,6 @@ This coroutine takes a function and its arguments, executes the
 function in executor and returns the result.
 
 """
-util.register_type_alias('Executor')
 
 
 def create_executor(*args: typing.Any,
@@ -670,7 +669,6 @@ class Queue:
 
 ExceptionCb = typing.Callable[[Exception], None]
 """Exception callback"""
-util.register_type_alias('ExceptionCb')
 
 
 class Group:
@@ -872,3 +870,8 @@ class Resource(abc.ABC):
     async def async_close(self):
         """Close resource and wait until closed is ``True``."""
         await self.async_group.async_close()
+
+
+# HACK type alias
+util.register_type_alias('Executor')
+util.register_type_alias('ExceptionCb')
