@@ -40,8 +40,7 @@ def task_build():
             name='hat-aio',
             description='Hat async utility library',
             url='https://github.com/hat-open/hat-aio',
-            license=common.License.APACHE2,
-            packages=['hat'])
+            license=common.License.APACHE2)
 
     return {'actions': [build]}
 
