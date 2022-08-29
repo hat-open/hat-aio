@@ -241,7 +241,7 @@ class CancelledWithResultError(asyncio.CancelledError):
         return self.__result
 
     @property
-    def exception(self):
+    def exception(self) -> typing.Optional[BaseException]:
         return self.__exception
 
 
@@ -257,7 +257,7 @@ async def wait_for(f: typing.Awaitable,
     returning result, this implementation raises `CancelledWithResultError`.
 
     """
-    group = Group(exception_cb=lambda e: None)
+    group = Group(log_exceptions=False)
     group.spawn(call_on_done, asyncio.sleep(timeout), group.close)
 
     f = group.wrap(f)
@@ -331,15 +331,11 @@ def create_executor(*args: typing.Any,
     return executor_wrapper
 
 
-def init_asyncio(policy: typing.Optional[asyncio.AbstractEventLoopPolicy] = None  # NOQA
-                 ) -> asyncio.AbstractEventLoop:
+def init_asyncio(policy: typing.Optional[asyncio.AbstractEventLoopPolicy] = None):  # NOQA
     """Initialize asyncio.
 
     Sets event loop policy (if ``None``, instance of
     `asyncio.DefaultEventLoopPolicy` is used).
-
-    After policy is set, new event loop is created and associated with current
-    thread.
 
     On Windows, `asyncio.WindowsProactorEventLoopPolicy` is used as default
     policy.
@@ -358,9 +354,6 @@ def init_asyncio(policy: typing.Optional[asyncio.AbstractEventLoopPolicy] = None
         return asyncio.DefaultEventLoopPolicy()
 
     asyncio.set_event_loop_policy(policy or get_default_policy())
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    return loop
 
 
 def run_asyncio(future: typing.Awaitable, *,
@@ -376,7 +369,9 @@ def run_asyncio(future: typing.Awaitable, *,
     overridden.
 
     If `loop` is set to ``None``, new event loop is created and set
-    as thread's default event loop.
+    as thread's default event loop. Newly created loop is closed when this
+    coroutine returns. Running tasks or async generators, other than provided
+    `future`, are not canceled prior to loop closing.
 
     On Windows, asyncio loop gets periodically woken up (every 0.5 seconds).
 
@@ -398,7 +393,8 @@ def run_asyncio(future: typing.Awaitable, *,
         assert result == 123
 
     """
-    if not loop:
+    close_loop = loop is None
+    if loop is None:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
@@ -442,6 +438,8 @@ def run_asyncio(future: typing.Awaitable, *,
     finally:
         for signalnum, handler in handlers.items():
             signal.signal(signalnum, handler)
+        if close_loop:
+            loop.close()
 
 
 class QueueClosedError(Exception):
@@ -683,16 +681,16 @@ class Group:
 
     If a Task raises exception, other Tasks continue to execute.
 
-    If `exception_cb` handler is ``None``, exceptions are logged with level
-    WARNING.
+    If `log_exceptions` is ``True``, exceptions raised by spawned tasks are
+    logged with level ERROR.
 
     """
 
     def __init__(self,
-                 exception_cb: typing.Optional[ExceptionCb] = None,
+                 log_exceptions: bool = True,
                  *,
                  loop: typing.Optional[asyncio.AbstractEventLoop] = None):
-        self._exception_cb = exception_cb
+        self._log_exceptions = log_exceptions
         self._loop = loop or asyncio.get_running_loop()
         self._closing = asyncio.Future(loop=loop)
         self._closed = asyncio.Future(loop=loop)
@@ -735,7 +733,8 @@ class Group:
         """
         if self._closing.done():
             raise Exception('group not open')
-        child = Group(self._exception_cb, loop=self._loop)
+        child = Group(log_exceptions=self._log_exceptions,
+                      loop=self._loop)
         child._parent = self
         self._children.add(child)
         return child
@@ -824,12 +823,8 @@ class Group:
         if task.cancelled():
             return
         e = task.exception()
-        if e:
-            exception_cb = self._exception_cb or self._default_exception_cb
-            exception_cb(e)
-
-    def _default_exception_cb(self, e):
-        mlog.warning('unhandled exception in async group: %s', e, exc_info=e)
+        if e and self._log_exceptions:
+            mlog.error('unhandled exception in async group: %s', e, exc_info=e)
 
 
 class Resource(abc.ABC):

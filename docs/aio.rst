@@ -161,7 +161,7 @@ Example usage::
 `hat.aio.init_asyncio` and `hat.aio.run_asyncio`
 ------------------------------------------------
 
-Utility coroutines for initialization of asyncio loop and task execution::
+Utility coroutines for initialization of asyncio and task execution::
 
     def init_asyncio(policy: typing.Optional[asyncio.AbstractEventLoopPolicy] = None): ...
 
@@ -273,7 +273,7 @@ Example usage::
     class Group:
 
         def __init__(self,
-                     exception_cb: typing.Optional[ExceptionCb] = None,
+                     log_exceptions: bool = True,
                      *,
                      loop: typing.Optional[asyncio.AbstractEventLoop] = None): ...
 

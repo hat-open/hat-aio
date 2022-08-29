@@ -145,9 +145,8 @@ async def test_call():
 
 
 async def test_call_on_cancel():
-    exceptions = aio.Queue()
     called = asyncio.Future()
-    group = aio.Group(exceptions.put_nowait)
+    group = aio.Group()
 
     async def closing(called):
         called.set_result(True)
@@ -159,7 +158,6 @@ async def test_call_on_cancel():
 
     await group.async_close()
     assert called.done()
-    assert exceptions.empty()
 
 
 async def test_call_on_cancel_example():
@@ -552,8 +550,7 @@ async def test_group_async_close_subgroup_without_tasks():
 
 
 async def test_group_spawn_subgroup_in_closing_subgroup():
-    exceptions = aio.Queue()
-    g1 = aio.Group(lambda e: exceptions.put_nowait(e))
+    g1 = aio.Group()
     g2 = g1.create_subgroup()
 
     async def task():
@@ -567,7 +564,6 @@ async def test_group_spawn_subgroup_in_closing_subgroup():
     await g1.async_close()
     assert g1.is_closed
     assert g2.is_closed
-    assert exceptions.empty()
 
 
 async def test_group_spawn_when_not_open():
@@ -599,33 +595,14 @@ async def test_group_context():
     assert f.done()
 
 
-async def test_group_custom_exception_handler():
-
-    def exception_cb(e):
-        nonlocal e2
-        e2 = e
-
-    async def f():
-        raise e1
-
-    e1 = Exception()
-    e2 = None
-    g = aio.Group(exception_cb)
-    with pytest.raises(Exception):
-        await g.spawn(f)
-    await g.async_close()
-
-    assert e1 is e2
-
-
-async def test_group_default_exception_handler():
+async def test_group_exception_handler():
 
     async def f():
         raise e
 
     e = Exception()
     g = aio.Group()
-    with unittest.mock.patch('hat.aio.mlog.warning') as mock:
+    with unittest.mock.patch('hat.aio.mlog.error') as mock:
         with pytest.raises(Exception):
             await g.spawn(f)
     await g.async_close()
