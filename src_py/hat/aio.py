@@ -12,6 +12,7 @@ import logging
 import signal
 import sys
 import typing
+import warnings
 
 from hat import util
 
@@ -825,10 +826,17 @@ class Group:
         e = task.exception()
         if e and self._log_exceptions:
             mlog.error('unhandled exception in async group: %s', e, exc_info=e)
+            warnings.warn('unhandled exception in async group')
 
 
 class Resource(abc.ABC):
     """Resource with lifetime control based on `Group`."""
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
+        await self.async_close()
 
     @property
     @abc.abstractmethod

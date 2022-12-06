@@ -595,6 +595,7 @@ async def test_group_context():
     assert f.done()
 
 
+@pytest.mark.filterwarnings("ignore::UserWarning")
 async def test_group_exception_handler():
 
     async def f():
