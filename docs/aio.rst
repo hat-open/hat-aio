@@ -133,25 +133,32 @@ used with :ref:`hat.aio.Goup <hat-aio-Group>`'s `spawn` method::
     await group.wait_closed()
 
 
-.. _hat-aio-create_executor:
+.. _hat-aio-executor:
 
-`hat.aio.create_executor`
--------------------------
+`hat.aio.Executor`
+------------------
 
-This helper coroutine provides simple wrapper for creation of executor
-instances and invocation of `asyncio.loop.run_in_executor` coroutine::
+This class provides simple wrapper for creation of executor instances and
+invocation of `asyncio.loop.run_in_executor` coroutine::
 
-    def create_executor(*args: typing.Any,
-                        executor_cls: typing.Type = concurrent.futures.ThreadPoolExecutor,  # NOQA
-                        loop: typing.Optional[asyncio.AbstractEventLoop] = None
-                        ) -> typing.Callable[..., typing.Awaitable]: ...
+    class Executor(Resource):
+
+        def __init__(self,
+                 *args: typing.Any,
+                 executor_cls: typing.Type = concurrent.futures.ThreadPoolExecutor,  # NOQA
+                 log_exceptions: bool = True): ...
+
+        def spawn(self,
+              fn: typing.Callable,
+              *args, **kwargs
+              ) -> asyncio.Task: ...
 
 Example usage::
 
-    executor1 = create_executor()
-    executor2 = create_executor()
-    tid1 = await executor1(threading.get_ident)
-    tid2 = await executor2(threading.get_ident)
+    executor1 = Executor()
+    executor2 = Executor()
+    tid1 = await executor1.spawn(threading.get_ident)
+    tid2 = await executor2.spawn(threading.get_ident)
     assert tid1 != tid2
 
 
@@ -268,9 +275,7 @@ Example usage::
 
 `Group` provides mechanics for `safe` task execution and life-time control::
 
-    ExceptionCb = typing.Callable[[Exception], None]
-
-    class Group:
+    class Group(Resource):
 
         def __init__(self,
                      log_exceptions: bool = True,
@@ -290,7 +295,9 @@ Example usage::
 
         async def wait_closed(self): ...
 
-        def create_subgroup(self) -> 'Group': ...
+        def create_subgroup(self,
+                            log_exceptions: typing.Optional[bool] = None
+                            ) -> 'Group': ...
 
         def wrap(self,
                  future: asyncio.Future
@@ -301,9 +308,9 @@ Example usage::
                   *args, **kwargs
                   ) -> asyncio.Task: ...
 
-        def close(self, cancel: bool = True): ...
+        def close(self): ...
 
-        async def async_close(self, cancel: bool = True): ...
+        async def async_close(self): ...
 
         async def __aenter__(self): ...
 
