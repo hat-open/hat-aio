@@ -48,14 +48,12 @@ class Queue:
     """
 
     def __init__(self,
-                 maxsize: int = 0, *,
-                 loop: typing.Optional[asyncio.AbstractEventLoop] = None):
+                 maxsize: int = 0):
         self._maxsize = maxsize
-        self._loop = loop
         self._queue = collections.deque()
         self._getters = collections.deque()
         self._putters = collections.deque()
-        self._closed = asyncio.Future(loop=loop)
+        self._closed = False
 
     def __aiter__(self):
         return self
@@ -63,12 +61,13 @@ class Queue:
     async def __anext__(self):
         try:
             return await self.get()
+
         except QueueClosedError:
             raise StopAsyncIteration
 
     def __str__(self):
         return (f'<{type(self).__name__}'
-                f' _closed={self._closed.done()} '
+                f' _closed={self._closed} '
                 f' _queue={list(self._queue)}>')
 
     def __len__(self):
@@ -82,7 +81,7 @@ class Queue:
     @property
     def is_closed(self) -> bool:
         """Is queue closed."""
-        return self._closed.done()
+        return self._closed
 
     def empty(self) -> bool:
         """``True`` if queue is empty, ``False`` otherwise."""
@@ -90,8 +89,10 @@ class Queue:
 
     def full(self) -> bool:
         """``True`` if queue is full, ``False`` otherwise."""
-        return (len(self._queue) >= self._maxsize if self._maxsize > 0
-                else False)
+        if self._maxsize > 0:
+            return len(self._queue) >= self._maxsize
+
+        return False
 
     def qsize(self) -> int:
         """Number of items currently in the queue."""
@@ -99,9 +100,10 @@ class Queue:
 
     def close(self):
         """Close the queue."""
-        if self._closed.done():
+        if self._closed:
             return
-        self._closed.set_result(True)
+
+        self._closed = True
         self._wakeup_all(self._putters)
         self._wakeup_next(self._getters)
 
@@ -115,6 +117,7 @@ class Queue:
         """
         if self.empty():
             raise QueueEmptyError()
+
         item = self._queue.popleft()
         self._wakeup_next(self._putters)
         return item
@@ -128,10 +131,12 @@ class Queue:
             QueueFullError
 
         """
-        if self._closed.done():
+        if self._closed:
             raise QueueClosedError()
+
         if self.full():
             raise QueueFullError()
+
         self._queue.append(item)
         self._wakeup_next(self._getters)
 
@@ -144,22 +149,31 @@ class Queue:
             QueueClosedError
 
         """
+        loop = asyncio.get_running_loop()
+
         while self.empty():
-            if self._closed.done():
+            if self._closed:
                 self._wakeup_all(self._getters)
                 raise QueueClosedError()
-            getter = asyncio.Future()
+
+            getter = loop.create_future()
             self._getters.append(getter)
+
             try:
                 await getter
+
             except BaseException:
                 getter.cancel()
+
                 with contextlib.suppress(ValueError):
                     self._getters.remove(getter)
+
                 if not getter.cancelled():
-                    if not self.empty() or self._closed.done():
+                    if not self.empty() or self._closed:
                         self._wakeup_next(self._getters)
+
                 raise
+
         return self.get_nowait()
 
     async def put(self, item: typing.Any):
@@ -172,18 +186,26 @@ class Queue:
             QueueClosedError
 
         """
-        while not self._closed.done() and self.full():
-            putter = asyncio.Future()
+        loop = asyncio.get_running_loop()
+
+        while not self._closed and self.full():
+            putter = loop.create_future()
             self._putters.append(putter)
+
             try:
                 await putter
+
             except BaseException:
                 putter.cancel()
+
                 with contextlib.suppress(ValueError):
                     self._putters.remove(putter)
+
                 if not self.full() and not putter.cancelled():
                     self._wakeup_next(self._putters)
+
                 raise
+
         return self.put_nowait(item)
 
     async def get_until_empty(self) -> typing.Any:
@@ -196,8 +218,10 @@ class Queue:
 
         """
         item = await self.get()
+
         while not self.empty():
             item = self.get_nowait()
+
         return item
 
     def get_nowait_until_empty(self) -> typing.Any:
@@ -209,13 +233,16 @@ class Queue:
 
         """
         item = self.get_nowait()
+
         while not self.empty():
             item = self.get_nowait()
+
         return item
 
     def _wakeup_next(self, waiters):
         while waiters:
             waiter = waiters.popleft()
+
             if not waiter.done():
                 waiter.set_result(None)
                 break
@@ -223,5 +250,6 @@ class Queue:
     def _wakeup_all(self, waiters):
         while waiters:
             waiter = waiters.popleft()
+
             if not waiter.done():
                 waiter.set_result(None)

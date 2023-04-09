@@ -42,17 +42,19 @@ async def first(xs: typing.AsyncIterable[T],
     async for i in xs:
         if fn(i):
             return i
+
     return default
 
 
-async def uncancellable(f: asyncio.Future,
+async def uncancellable(obj: typing.Awaitable,
                         raise_cancel: bool = True
                         ) -> typing.Any:
-    """Uncancellable execution of a Future.
+    """Uncancellable execution of a awaitable object.
 
-    Future is shielded and its execution cannot be interrupted.
+    Object is scheduled as task, shielded and its execution cannot be
+    interrupted.
 
-    If `raise_cancel` is `True` and the Future gets canceled,
+    If `raise_cancel` is `True` and the object gets canceled,
     `asyncio.CancelledError` is reraised after the Future finishes.
 
     Warning:
@@ -61,25 +63,36 @@ async def uncancellable(f: asyncio.Future,
         caution.
 
     Args:
-        f: future
+        obj: awaitable object
         raise_cancel: raise CancelledError flag
 
     Returns:
-        future's result
+        object execution result
 
     """
     exception = None
-    task = asyncio.ensure_future(f)
+    loop = asyncio.get_running_loop()
+
+    if asyncio.iscoroutine(obj):
+        task = loop.create_task(obj)
+
+    else:
+        task = asyncio.ensure_future(obj, loop=loop)
+
     while not task.done():
         try:
             await asyncio.shield(task)
+
         except asyncio.CancelledError as e:
             if raise_cancel:
                 exception = e
+
         except Exception:
             pass
+
     if exception:
         raise exception
+
     return task.result()
 
 
@@ -141,8 +154,10 @@ async def call(fn: AsyncCallable, *args, **kwargs) -> typing.Any:
 
     """
     result = fn(*args, **kwargs)
+
     if inspect.isawaitable(result):
         result = await result
+
     return result
 
 
@@ -171,7 +186,8 @@ async def call_on_cancel(fn: AsyncCallable, *args, **kwargs) -> typing.Any:
 
     """
     with contextlib.suppress(asyncio.CancelledError):
-        await asyncio.Future()
+        await asyncio.get_running_loop().create_future()
+
     return await call(fn, *args, *kwargs)
 
 
@@ -211,6 +227,7 @@ async def call_on_done(f: typing.Awaitable,
     """
     with contextlib.suppress(Exception):
         await f
+
     return await call(fn, *args, *kwargs)
 
 

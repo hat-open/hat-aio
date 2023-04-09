@@ -55,6 +55,10 @@ class Resource(abc.ABC):
         await self.async_group.async_close()
 
 
+class GroupClosedError(Exception):
+    """Group closed exception"""
+
+
 class Group(Resource):
     """Group of asyncio Tasks.
 
@@ -78,9 +82,8 @@ class Group(Resource):
                  loop: typing.Optional[asyncio.AbstractEventLoop] = None):
         self._log_exceptions = log_exceptions
         self._loop = loop or asyncio.get_running_loop()
-        self._closing = asyncio.Future(loop=loop)
-        self._closed = asyncio.Future(loop=loop)
-        self._canceled = False
+        self._closing = self._loop.create_future()
+        self._closed = self._loop.create_future()
         self._tasks = set()
         self._parent = None
         self._children = set()
@@ -126,7 +129,7 @@ class Group(Resource):
 
         """
         if self._closing.done():
-            raise Exception('group not open')
+            raise GroupClosedError("can't create subgroup of closed group")
 
         child = Group(
             log_exceptions=(self._log_exceptions if log_exceptions is None
@@ -137,21 +140,27 @@ class Group(Resource):
         return child
 
     def wrap(self,
-             future: asyncio.Future
+             obj: typing.Awaitable
              ) -> asyncio.Task:
-        """Wrap the Future into a Task and schedule its execution. Return the
-        Task object.
+        """Wrap the awaitable object into a Task and schedule its execution.
+        Return the Task object.
 
         Resulting task is shielded and can be canceled only with
         `Group.async_close`.
 
         """
         if self._closing.done():
-            raise Exception('group not open')
+            raise GroupClosedError("can't wrap object in closed group")
 
-        task = asyncio.ensure_future(future, loop=self._loop)
+        if asyncio.iscoroutine(obj):
+            task = self._loop.create_task(obj)
+
+        else:
+            task = asyncio.ensure_future(obj, loop=self._loop)
+
         self._tasks.add(task)
         task.add_done_callback(self._on_task_done)
+
         return asyncio.shield(task)
 
     def spawn(self,
@@ -167,7 +176,7 @@ class Group(Resource):
 
         """
         if self._closing.done():
-            raise Exception('group not open')
+            raise GroupClosedError("can't spawn task in closed group")
 
         future = fn(*args, **kwargs)
         return self.wrap(future)
@@ -180,24 +189,22 @@ class Group(Resource):
         and execution of all tasks is completed, closed Future is set.
 
         """
+        if self._closing.done():
+            return
+
+        self._closing.set_result(True)
+
         for child in list(self._children):
             child.close()
 
-        if not self._canceled:
-            self._canceled = True
-            for task in self._tasks:
-                self._loop.call_soon(task.cancel)
-
-        if self._closing.done():
-            return
-        self._closing.set_result(True)
+        for task in self._tasks:
+            self._loop.call_soon(task.cancel)
 
         futures = [*self._tasks,
                    *(child._closed for child in self._children)]
         if futures:
-            waiting_future = asyncio.ensure_future(
-                asyncio.wait(futures), loop=self._loop)
-            waiting_future.add_done_callback(lambda _: self._on_closed())
+            waiting_task = self._loop.create_task(asyncio.wait(futures))
+            waiting_task.add_done_callback(lambda _: self._on_closed())
 
         else:
             self._on_closed()
@@ -217,12 +224,15 @@ class Group(Resource):
         if self._parent is not None:
             self._parent._children.remove(self)
             self._parent = None
+
         self._closed.set_result(True)
 
     def _on_task_done(self, task):
         self._tasks.remove(task)
+
         if task.cancelled():
             return
+
         e = task.exception()
         if e and self._log_exceptions:
             mlog.error('unhandled exception in async group: %s', e, exc_info=e)
