@@ -133,33 +133,27 @@ used with :ref:`hat.aio.Goup <hat-aio-Group>`'s `spawn` method::
     await group.wait_closed()
 
 
-.. _hat-aio-executor:
+.. _hat-aio-wait_for:
 
-`hat.aio.Executor`
+`hat.aio.wait_for`
 ------------------
 
-This class provides simple wrapper for creation of executor instances and
-invocation of `asyncio.loop.run_in_executor` coroutine::
+Drop-in replacement for `asyncio.wait_for` that ensure propagation of
+`CancelledError`. If task is cancelled with objects's result available,
+instead of returning result, this implementation raises
+`CancelledWithResultError`::
 
-    class Executor(Resource):
+    class CancelledWithResultError(asyncio.CancelledError):
 
-        def __init__(self,
-                 *args: typing.Any,
-                 executor_cls: typing.Type = concurrent.futures.ThreadPoolExecutor,  # NOQA
-                 log_exceptions: bool = True): ...
+        @property
+        def result(self) -> typing.Optional[typing.Any]: ...
 
-        def spawn(self,
-              fn: typing.Callable,
-              *args, **kwargs
-              ) -> asyncio.Task: ...
+        @property
+        def exception(self) -> typing.Optional[BaseException]: ...
 
-Example usage::
-
-    executor1 = Executor()
-    executor2 = Executor()
-    tid1 = await executor1.spawn(threading.get_ident)
-    tid2 = await executor2.spawn(threading.get_ident)
-    assert tid1 != tid2
+    async def wait_for(obj: typing.Awaitable,
+                       timeout: float
+                       ) -> typing.Any: ...
 
 
 .. _hat-aio-init_asyncio:
@@ -384,6 +378,35 @@ Simple abstract base class providing abstraction of lifetime control based on
         def close(self): ...
 
         async def async_close(self): ...
+
+
+.. _hat-aio-executor:
+
+`hat.aio.Executor`
+------------------
+
+This class provides simple wrapper for creation of executor instances and
+invocation of `asyncio.loop.run_in_executor` coroutine::
+
+    class Executor(Resource):
+
+        def __init__(self,
+                 *args: typing.Any,
+                 executor_cls: typing.Type = concurrent.futures.ThreadPoolExecutor,  # NOQA
+                 log_exceptions: bool = True): ...
+
+        def spawn(self,
+              fn: typing.Callable,
+              *args, **kwargs
+              ) -> asyncio.Task: ...
+
+Example usage::
+
+    executor1 = Executor()
+    executor2 = Executor()
+    tid1 = await executor1.spawn(threading.get_ident)
+    tid2 = await executor2.spawn(threading.get_ident)
+    assert tid1 != tid2
 
 
 API
