@@ -1,6 +1,6 @@
 .. _online documentation: https://hat-aio.hat-open.com
 .. _git repository: https://github.com/hat-open/hat-aio.git
-.. _PyPI project: https://pypi.org/project/hat-syslog
+.. _PyPI project: https://pypi.org/project/hat-aio
 .. _pydoit: https://pydoit.org
 .. _Hat Open: https://hat-open.com
 .. _Končar Digital: https://www.koncar.hr/en
