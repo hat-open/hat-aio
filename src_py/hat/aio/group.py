@@ -1,7 +1,7 @@
+from typing import Awaitable, Callable
 import abc
 import asyncio
 import logging
-import typing
 import warnings
 
 
@@ -79,7 +79,7 @@ class Group(Resource):
     def __init__(self,
                  log_exceptions: bool = True,
                  *,
-                 loop: typing.Optional[asyncio.AbstractEventLoop] = None):
+                 loop: asyncio.AbstractEventLoop | None = None):
         self._log_exceptions = log_exceptions
         self._loop = loop or asyncio.get_running_loop()
         self._closing = self._loop.create_future()
@@ -117,7 +117,7 @@ class Group(Resource):
         await asyncio.shield(self._closed)
 
     def create_subgroup(self,
-                        log_exceptions: typing.Optional[bool] = None
+                        log_exceptions: bool | None = None
                         ) -> 'Group':
         """Create new Group as a child of this Group. Return the new Group.
 
@@ -140,7 +140,7 @@ class Group(Resource):
         return child
 
     def wrap(self,
-             obj: typing.Awaitable
+             obj: Awaitable
              ) -> asyncio.Task:
         """Wrap the awaitable object into a Task and schedule its execution.
         Return the Task object.
@@ -164,7 +164,7 @@ class Group(Resource):
         return asyncio.shield(task)
 
     def spawn(self,
-              fn: typing.Callable[..., typing.Awaitable],
+              fn: Callable[..., Awaitable],
               *args, **kwargs
               ) -> asyncio.Task:
         """Wrap the result of a `fn` into a Task and schedule its execution.
