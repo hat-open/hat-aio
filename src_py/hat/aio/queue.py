@@ -1,7 +1,7 @@
-from typing import Any
 import asyncio
 import collections
 import contextlib
+import typing
 
 
 class QueueClosedError(Exception):
@@ -107,7 +107,7 @@ class Queue:
         self._wakeup_all(self._putters)
         self._wakeup_next(self._getters)
 
-    def get_nowait(self) -> Any:
+    def get_nowait(self) -> typing.Any:
         """Return an item if one is immediately available, else raise
         `QueueEmptyError`.
 
@@ -122,7 +122,7 @@ class Queue:
         self._wakeup_next(self._putters)
         return item
 
-    def put_nowait(self, item: Any):
+    def put_nowait(self, item: typing.Any):
         """Put an item into the queue without blocking.
 
         If no free slot is immediately available, raise `QueueFullError`.
@@ -140,7 +140,7 @@ class Queue:
         self._queue.append(item)
         self._wakeup_next(self._getters)
 
-    async def get(self) -> Any:
+    async def get(self) -> typing.Any:
         """Remove and return an item from the queue.
 
         If queue is empty, wait until an item is available.
@@ -176,7 +176,7 @@ class Queue:
 
         return self.get_nowait()
 
-    async def put(self, item: Any):
+    async def put(self, item: typing.Any):
         """Put an item into the queue.
 
         If the queue is full, wait until a free slot is available before adding
@@ -208,7 +208,7 @@ class Queue:
 
         return self.put_nowait(item)
 
-    async def get_until_empty(self) -> Any:
+    async def get_until_empty(self) -> typing.Any:
         """Empty the queue and return the last item.
 
         If queue is empty, wait until at least one item is available.
@@ -224,7 +224,7 @@ class Queue:
 
         return item
 
-    def get_nowait_until_empty(self) -> Any:
+    def get_nowait_until_empty(self) -> typing.Any:
         """Empty the queue and return the last item if at least one
         item is immediately available, else raise `QueueEmptyError`.
 

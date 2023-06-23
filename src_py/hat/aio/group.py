@@ -1,7 +1,7 @@
-from typing import Awaitable, Callable
 import abc
 import asyncio
 import logging
+import typing
 import warnings
 
 
@@ -140,7 +140,7 @@ class Group(Resource):
         return child
 
     def wrap(self,
-             obj: Awaitable
+             obj: typing.Awaitable
              ) -> asyncio.Task:
         """Wrap the awaitable object into a Task and schedule its execution.
         Return the Task object.
@@ -164,7 +164,7 @@ class Group(Resource):
         return asyncio.shield(task)
 
     def spawn(self,
-              fn: Callable[..., Awaitable],
+              fn: typing.Callable[..., typing.Awaitable],
               *args, **kwargs
               ) -> asyncio.Task:
         """Wrap the result of a `fn` into a Task and schedule its execution.

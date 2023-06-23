@@ -1,5 +1,5 @@
-from typing import Any, Awaitable
 import asyncio
+import typing
 
 from hat.aio.group import Group
 from hat.aio.misc import call_on_done, uncancellable
@@ -9,14 +9,14 @@ class CancelledWithResultError(asyncio.CancelledError):
     """CancelledError with associated result or exception"""
 
     def __init__(self,
-                 result: Any | None,
+                 result: typing.Any | None,
                  exception: BaseException | None):
         super().__init__()
         self.__result = result
         self.__exception = exception
 
     @property
-    def result(self) -> Any | None:
+    def result(self) -> typing.Any | None:
         """Result"""
         return self.__result
 
@@ -25,9 +25,9 @@ class CancelledWithResultError(asyncio.CancelledError):
         return self.__exception
 
 
-async def wait_for(obj: Awaitable,
+async def wait_for(obj: typing.Awaitable,
                    timeout: float
-                   ) -> Any:
+                   ) -> typing.Any:
     """"Wait for the awaitable object to complete, with timeout.
 
     Implementation `asyncio.wait_for` that ensure propagation of
