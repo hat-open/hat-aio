@@ -1,0 +1,31 @@
+[project]
+name = "hat-aio"
+version = "0.7.8"
+description = "Hat async utility library"
+readme = "README.rst"
+requires-python = ">=3.10"
+license = {text = "Apache-2.0"}
+
+[project.urls]
+Homepage = "http://hat-open.com"
+Repository = "https://github.com/hat-open/hat-aio.git"
+Documentation = "http://hat-aio.hat-open.com"
+
+[project.optional-dependencies]
+dev = ["hat-doit ~=0.14.5"]
+
+[build-system]
+requires = ["hat-doit ~=0.14.5"]
+build-backend = "hat.doit.pep517"
+
+[tool.pytest.ini_options]
+testpaths = ["test_pytest"]
+asyncio_mode = "auto"
+timeout = 300
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.coverage.run]
+include = ["src_py/*"]
+data_file = "build/.coverage"
