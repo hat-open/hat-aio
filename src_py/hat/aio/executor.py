@@ -4,13 +4,16 @@ import functools
 import typing
 
 from hat.aio.group import Resource, Group
-from hat.aio.misc import uncancellable
+from hat.aio.misc import call_on_cancel, uncancellable
 
 
 class Executor(Resource):
     """Executor wrapping `asyncio.loop.run_in_executor`.
 
     Wrapped executor is created from `executor_cls` with provided `args`.
+
+    If `wait_futures` is ``True``, executor will be closed once all running
+    tasks finishes.
 
     `log_exceptions` is delegated to `async_group`.
 
@@ -32,9 +35,14 @@ class Executor(Resource):
     def __init__(self,
                  *args,
                  executor_cls: typing.Type[concurrent.futures.Executor] = concurrent.futures.ThreadPoolExecutor,  # NOQA
-                 log_exceptions: bool = True):
+                 log_exceptions: bool = True,
+                 wait_futures: bool = True):
+        self._wait_futures = wait_futures
         self._executor = executor_cls(*args)
+        self._loop = asyncio.get_running_loop()
         self._async_group = Group(log_exceptions)
+
+        self.async_group.spawn(call_on_cancel, self._executor.shutdown, False)
 
     @property
     def async_group(self):
@@ -46,12 +54,16 @@ class Executor(Resource):
               *args, **kwargs
               ) -> asyncio.Task:
         """Spawn new task"""
-        return self.async_group.spawn(self._spawn, fn, *args, **kwargs)
+        return self.async_group.spawn(self._spawn, fn, args, kwargs)
 
-    async def _spawn(self, fn, *args, **kwargs):
-        loop = asyncio.get_running_loop()
+    async def _spawn(self, fn, args, kwargs):
         func = functools.partial(fn, *args, **kwargs)
-        return await uncancellable(loop.run_in_executor(self._executor, func))
+        coro = self._loop.run_in_executor(self._executor, func)
+
+        if self._wait_futures:
+            coro = uncancellable(coro)
+
+        return await coro
 
 
 def create_executor(*args,

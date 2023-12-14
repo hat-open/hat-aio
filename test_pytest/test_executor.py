@@ -16,6 +16,8 @@ async def test_executor():
     with pytest.raises(Exception):
         executor.spawn(lambda: 123)
 
+    await executor.async_close()
+
 
 async def test_create_executor():
     executor = aio.create_executor()
