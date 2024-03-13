@@ -16,10 +16,10 @@ Repository = "https://github.com/hat-open/hat-aio.git"
 Documentation = "http://hat-aio.hat-open.com"
 
 [project.optional-dependencies]
-dev = ["hat-doit ~=0.15.5"]
+dev = ["hat-doit ~=0.15.11"]
 
 [build-system]
-requires = ["hat-doit ~=0.15.5"]
+requires = ["hat-doit ~=0.15.11"]
 build-backend = "hat.doit.pep517"
 
 [tool.pytest.ini_options]
