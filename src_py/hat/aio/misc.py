@@ -1,6 +1,5 @@
+from collections.abc import AsyncIterable, Awaitable, Callable
 import asyncio
-import collections
-import collections.abc
 import contextlib
 import inspect
 import signal
@@ -11,8 +10,8 @@ import typing
 T = typing.TypeVar('T')
 
 
-async def first(xs: typing.AsyncIterable[T],
-                fn: typing.Callable[[T], typing.Any] = lambda _: True,
+async def first(xs: AsyncIterable[T],
+                fn: Callable[[T], typing.Any] = lambda _: True,
                 default: T | None = None
                 ) -> T | None:
     """Return the first element from async iterable that satisfies
@@ -46,9 +45,9 @@ async def first(xs: typing.AsyncIterable[T],
     return default
 
 
-async def uncancellable(obj: typing.Awaitable,
+async def uncancellable(obj: Awaitable[T],
                         raise_cancel: bool = True
-                        ) -> typing.Any:
+                        ) -> T:
     """Uncancellable execution of a awaitable object.
 
     Object is scheduled as task, shielded and its execution cannot be
@@ -100,12 +99,12 @@ async def uncancellable(obj: typing.Awaitable,
 class _AsyncCallableType(type(typing.Callable), _root=True):
 
     def __init__(self):
-        super().__init__(origin=collections.abc.Callable,
-                         nparams=(..., typing.Awaitable | None))
+        super().__init__(origin=typing.Callable,
+                         nparams=(..., Awaitable | None))
 
     def __getitem__(self, params):
         if len(params) == 2:
-            params = params[0], params[1] | typing.Awaitable[params[1]]
+            params = params[0], params[1] | Awaitable[params[1]]
 
         return super().__getitem__(params)
 
@@ -114,7 +113,7 @@ AsyncCallable = _AsyncCallableType()
 """Async callable"""
 
 
-async def call(fn: AsyncCallable, *args, **kwargs) -> typing.Any:
+async def call(fn: AsyncCallable[..., T], *args, **kwargs) -> T:
     """Call a function or a coroutine (or other callable object).
 
     Call the `fn` with `args` and `kwargs`. If result of this call is
@@ -155,7 +154,7 @@ async def call(fn: AsyncCallable, *args, **kwargs) -> typing.Any:
     return result
 
 
-async def call_on_cancel(fn: AsyncCallable, *args, **kwargs) -> typing.Any:
+async def call_on_cancel(fn: AsyncCallable[..., T], *args, **kwargs) -> T:
     """Call a function or a coroutine when canceled.
 
     When canceled, `fn` is called with `args` and `kwargs` by using
@@ -185,10 +184,10 @@ async def call_on_cancel(fn: AsyncCallable, *args, **kwargs) -> typing.Any:
     return await call(fn, *args, *kwargs)
 
 
-async def call_on_done(f: typing.Awaitable,
-                       fn: AsyncCallable,
+async def call_on_done(f: Awaitable,
+                       fn: AsyncCallable[..., T],
                        *args, **kwargs
-                       ) -> typing.Any:
+                       ) -> T:
     """Call a function or a coroutine when awaitable is done.
 
     When `f` is done, `fn` is called with `args` and `kwargs` by using
@@ -250,10 +249,10 @@ def init_asyncio(policy: asyncio.AbstractEventLoopPolicy | None = None):
     asyncio.set_event_loop_policy(policy or get_default_policy())
 
 
-def run_asyncio(future: typing.Awaitable, *,
+def run_asyncio(future: Awaitable[T], *,
                 handle_signals: bool = True,
                 loop: asyncio.AbstractEventLoop | None = None
-                ) -> typing.Any:
+                ) -> T:
     """Run asyncio loop until the `future` is completed and return the result.
 
     If `handle_signals` is ``True``, SIGINT and SIGTERM handlers are

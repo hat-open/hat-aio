@@ -1,7 +1,7 @@
+from collections.abc import Awaitable, Callable
 import asyncio
 import concurrent.futures
 import functools
-import typing
 
 from hat.aio.group import Resource, Group
 from hat.aio.misc import call_on_cancel, uncancellable
@@ -34,7 +34,7 @@ class Executor(Resource):
 
     def __init__(self,
                  *args,
-                 executor_cls: typing.Type[concurrent.futures.Executor] = concurrent.futures.ThreadPoolExecutor,  # NOQA
+                 executor_cls: type[concurrent.futures.Executor] = concurrent.futures.ThreadPoolExecutor,  # NOQA
                  log_exceptions: bool = True,
                  wait_futures: bool = True):
         self._wait_futures = wait_futures
@@ -50,7 +50,7 @@ class Executor(Resource):
         return self._async_group
 
     def spawn(self,
-              fn: typing.Callable,
+              fn: Callable,
               *args, **kwargs
               ) -> asyncio.Task:
         """Spawn new task"""
@@ -67,9 +67,9 @@ class Executor(Resource):
 
 
 def create_executor(*args,
-                    executor_cls: typing.Type[concurrent.futures.Executor] = concurrent.futures.ThreadPoolExecutor,  # NOQA
+                    executor_cls: type[concurrent.futures.Executor] = concurrent.futures.ThreadPoolExecutor,  # NOQA
                     loop: asyncio.AbstractEventLoop | None = None
-                    ) -> typing.Callable[..., typing.Awaitable]:
+                    ) -> Callable[..., Awaitable]:
     """Create `asyncio.loop.run_in_executor` wrapper.
 
     Wrapped executor is created from `executor_cls` with provided `args`.

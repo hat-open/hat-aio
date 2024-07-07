@@ -1,8 +1,12 @@
+from collections.abc import Awaitable
 import asyncio
 import typing
 
 from hat.aio.group import Group
 from hat.aio.misc import call_on_done, uncancellable
+
+
+T = typing.TypeVar('T')
 
 
 class CancelledWithResultError(asyncio.CancelledError):
@@ -25,9 +29,9 @@ class CancelledWithResultError(asyncio.CancelledError):
         return self.__exception
 
 
-async def wait_for(obj: typing.Awaitable,
+async def wait_for(obj: Awaitable[T],
                    timeout: float
-                   ) -> typing.Any:
+                   ) -> T:
     """"Wait for the awaitable object to complete, with timeout.
 
     Implementation `asyncio.wait_for` that ensure propagation of
