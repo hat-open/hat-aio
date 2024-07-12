@@ -146,7 +146,7 @@ class Group(Resource):
         Return the Task object.
 
         Resulting task is shielded and can be canceled only with
-        `Group.async_close`.
+        `Group.close`.
 
         """
         if self._closing.done():
@@ -172,7 +172,7 @@ class Group(Resource):
 
         Function `fn` is called with provided `args` and `kwargs`.
         Resulting Task is shielded and can be canceled only with
-        `Group.async_close`.
+        `Group.close`.
 
         """
         if self._closing.done():
