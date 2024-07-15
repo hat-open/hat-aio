@@ -5,7 +5,8 @@ import pytest
 from hat import aio
 
 
-async def test_wait_for(event_loop):
+async def test_wait_for():
+    loop = asyncio.get_running_loop()
 
     async def return_result(delay):
         await asyncio.sleep(delay)
@@ -25,7 +26,7 @@ async def test_wait_for(event_loop):
         await aio.wait_for(return_result(0.001), 0)
 
     f = asyncio.ensure_future(aio.wait_for(return_result(0.001), 0))
-    event_loop.call_soon(f.cancel)
+    loop.call_soon(f.cancel)
     with pytest.raises(asyncio.CancelledError):
         await f
 
@@ -39,7 +40,7 @@ async def test_wait_for(event_loop):
             assert False
 
     f = asyncio.ensure_future(f1())
-    event_loop.call_soon(f.cancel)
+    loop.call_soon(f.cancel)
     await f
 
     async def f2():
@@ -52,5 +53,5 @@ async def test_wait_for(event_loop):
             assert False
 
     f = asyncio.ensure_future(f2())
-    event_loop.call_soon(f.cancel)
+    loop.call_soon(f.cancel)
     await f
