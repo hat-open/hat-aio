@@ -1,3 +1,4 @@
 /.doit.db
+/.mypy_cache
 /build
 __pycache__

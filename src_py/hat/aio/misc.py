@@ -96,11 +96,7 @@ async def uncancellable(obj: Awaitable[T],
 
 
 # TODO: AsyncCallable rewrite needed
-class _AsyncCallableType(type(typing.Callable), _root=True):
-
-    def __init__(self):
-        super().__init__(origin=typing.Callable,
-                         nparams=(..., Awaitable | None))
+class _AsyncCallableType(type(typing.Callable), _root=True):  # type: ignore
 
     def __getitem__(self, params):
         if len(params) == 2:
@@ -109,7 +105,7 @@ class _AsyncCallableType(type(typing.Callable), _root=True):
         return super().__getitem__(params)
 
 
-AsyncCallable = _AsyncCallableType()
+AsyncCallable: typing.TypeAlias = _AsyncCallableType(Callable, 2)  # type: ignore  # NOQA
 """Async callable"""
 
 
