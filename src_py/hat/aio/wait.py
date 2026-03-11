@@ -3,30 +3,10 @@ import asyncio
 import typing
 
 from hat.aio.group import Group
-from hat.aio.misc import call_on_done, uncancellable
+from hat.aio.misc import call_on_done, uncancellable, CancelledWithResultError
 
 
 T = typing.TypeVar('T')
-
-
-class CancelledWithResultError(asyncio.CancelledError):
-    """CancelledError with associated result or exception"""
-
-    def __init__(self,
-                 result: typing.Any | None,
-                 exception: BaseException | None):
-        super().__init__()
-        self.__result = result
-        self.__exception = exception
-
-    @property
-    def result(self) -> typing.Any | None:
-        """Result"""
-        return self.__result
-
-    @property
-    def exception(self) -> BaseException | None:
-        return self.__exception
 
 
 async def wait_for(obj: Awaitable[T],
@@ -47,26 +27,26 @@ async def wait_for(obj: Awaitable[T],
     task = group.wrap(obj)
     group.spawn(call_on_done, asyncio.shield(task), group.close)
 
-    exc = None
+    cancelled = False
 
     try:
         await group.wait_closing()
 
-    except asyncio.CancelledError as e:
-        exc = e
+    except asyncio.CancelledError:
+        cancelled = True
 
     try:
         await uncancellable(group.async_close())
 
-    except asyncio.CancelledError as e:
-        exc = e
+    except asyncio.CancelledError:
+        cancelled = True
 
-    if exc:
+    if cancelled:
         if task.cancelled():
-            raise exc
+            raise asyncio.CancelledError()
 
         result = None if task.exception() else task.result()
-        raise CancelledWithResultError(result, task.exception()) from exc
+        raise CancelledWithResultError(result, task.exception())
 
     if task.cancelled():
         raise asyncio.TimeoutError()

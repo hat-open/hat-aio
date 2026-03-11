@@ -45,6 +45,26 @@ async def first(xs: AsyncIterable[T],
     return default
 
 
+class CancelledWithResultError(asyncio.CancelledError):
+    """CancelledError with associated result or exception"""
+
+    def __init__(self,
+                 result: typing.Any | None,
+                 exception: BaseException | None):
+        super().__init__()
+        self.__result = result
+        self.__exception = exception
+
+    @property
+    def result(self) -> typing.Any | None:
+        """Result"""
+        return self.__result
+
+    @property
+    def exception(self) -> BaseException | None:
+        return self.__exception
+
+
 async def uncancellable(obj: Awaitable[T],
                         raise_cancel: bool = True
                         ) -> T:
@@ -54,7 +74,7 @@ async def uncancellable(obj: Awaitable[T],
     interrupted.
 
     If `raise_cancel` is `True` and the object gets canceled,
-    `asyncio.CancelledError` is reraised after the Future finishes.
+    `CancelledWithResultError` is raised after the Future finishes.
 
     Warning:
         If `raise_cancel` is `False`, this method suppresses
@@ -69,7 +89,7 @@ async def uncancellable(obj: Awaitable[T],
         object execution result
 
     """
-    exception = None
+    cancelled = False
     loop = asyncio.get_running_loop()
 
     if asyncio.iscoroutine(obj):
@@ -82,15 +102,15 @@ async def uncancellable(obj: Awaitable[T],
         try:
             await asyncio.shield(task)
 
-        except asyncio.CancelledError as e:
-            if raise_cancel:
-                exception = e
+        except asyncio.CancelledError:
+            cancelled = True
 
         except Exception:
             pass
 
-    if exception:
-        raise exception
+    if raise_cancel and cancelled:
+        result = None if task.exception() else task.result()
+        raise CancelledWithResultError(result, task.exception())
 
     return task.result()
 

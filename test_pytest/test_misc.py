@@ -126,6 +126,50 @@ async def test_uncancellable_vs_shield():
     assert future.result() == 1
 
 
+async def test_uncancellable_cancel_with_result():
+    e = Exception()
+
+    async def f1():
+        await asyncio.sleep(0.001)
+        return 123
+
+    async def f2():
+        await asyncio.sleep(0.001)
+        raise e
+
+    t1 = asyncio.create_task(aio.uncancellable(f1()))
+    asyncio.get_event_loop().call_soon(t1.cancel)
+
+    cancelled_with_result = False
+
+    try:
+        await t1
+
+    except aio.CancelledWithResultError as exc:
+        cancelled_with_result = True
+
+        assert exc.result == 123
+        assert exc.exception is None
+
+    assert cancelled_with_result
+
+    t2 = asyncio.create_task(aio.uncancellable(f2()))
+    asyncio.get_event_loop().call_soon(t2.cancel)
+
+    cancelled_with_result = False
+
+    try:
+        await t2
+
+    except aio.CancelledWithResultError as exc:
+        cancelled_with_result = True
+
+        assert exc.result is None
+        assert exc.exception is e
+
+    assert cancelled_with_result
+
+
 async def test_call():
 
     def f1(x):
