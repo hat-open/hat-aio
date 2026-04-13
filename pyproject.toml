@@ -1,6 +1,6 @@
 [project]
 name = "hat-aio"
-version = "0.7.12"
+version = "0.7.13"
 description = "Hat async utility library"
 readme = "README.rst"
 requires-python = ">=3.10"
@@ -15,11 +15,16 @@ Homepage = "http://hat-open.com"
 Repository = "https://github.com/hat-open/hat-aio.git"
 Documentation = "http://hat-aio.hat-open.com"
 
-[project.optional-dependencies]
-dev = ["hat-doit ~=0.16.2"]
+[dependency-groups]
+run = []
+build = ["hat-doit ~=0.16.4"]
+dev = [
+    {include-group = "run"},
+    {include-group = "build"},
+]
 
 [build-system]
-requires = ["hat-doit ~=0.16.2"]
+requires = ["hat-doit ~=0.16.4"]
 build-backend = "hat.doit.pep517"
 
 [tool.pytest.ini_options]
